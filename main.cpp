@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
 
     try{
         Mat test(argv[1]);
-        std::vector<int> result = test.solution();
-        cout << "Рекомендуемые стратегии: ";
+        std::vector<int> result = test.solution(true);
+        cout << "Рекомендуемые стратегии на основе всех критериев: ";
         for (int i = 0; i < result.size(); i++){
             if (i != 0){
                 cout << ", ";

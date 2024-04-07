@@ -1,32 +1,37 @@
 #ifndef MAT_H
 #define MAT_H
 #include <vector>
-#include "maxmin.h"
+
+using namespace std;
+
+template<typename T>
+struct Maxmin{
+    T value;
+    vector<int> indexes;
+};
 
 class Mat
 {
 private:
     bool income;
-    std::vector<std::vector<double>> matrix;
+    vector<vector<double>> matrix;
     bool probabilities_flag;
-    std::vector<double> probabilities;
-    float optimism;
+    vector<double> probabilities;
+    double optimism;
 
     template<typename T>
-    Maxmin<T> max(std::vector<T> arr);
+    Maxmin<T> max(vector<T> arr);
     template<typename T>
-    Maxmin<T> min(std::vector<T> arr);
+    Maxmin<T> min(vector<T> arr);
 
 public:
-    Mat();
     Mat(char file_path[]);
-    ~Mat();
 
-    std::vector<int> solution();
-    std::vector<int> bayes_laplace();
-    std::vector<int> wald();
-    std::vector<int> savage();
-    std::vector<int> hurwitz();
+    vector<int> solution(bool print = false);
+    vector<int> bayes_laplace(bool print = false);
+    vector<int> wald(bool print = false);
+    vector<int> savage(bool print = false);
+    vector<int> hurwitz(bool print = false);
 };
 
 #endif // MAT_H

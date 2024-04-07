@@ -2,38 +2,30 @@
 #include <iostream>
 #include "mat.h"
 
-Mat::Mat() {
-    income = true;
-    std::vector<std::vector<double>> matrix;
-    probabilities_flag = false;
-    std::vector<double> probabilities;
-    optimism = 0.5;
-}
-
 Mat::Mat(char file_path[]){
     int inp;
     unsigned int size_n, size_m;
-    std::fstream file(file_path, std::ios::in);
+    fstream file(file_path, ios::in);
     if (!file){
         throw "FileError";
     }
 
-    file >> inp;
+    if (!(file >> inp)) throw "FileError";
     if (inp == 0){
         income = false;
     }else{
         income = true;
     }
-    file >> size_n;
-    file >> size_m;
+    if (!(file >> size_n)) throw "FileError";
+    if (!(file >> size_m)) throw "FileError";
     this->matrix.resize(size_n);
     for (int i = 0; i < size_n; i++){
         this->matrix[i].resize(size_m);
         for (int j = 0; j < size_m; j++){
-            file >> this->matrix[i][j];
+            if (!(file >> this->matrix[i][j])) throw "FileError";
         }
     }
-    file >> inp;
+    if (!(file >> inp)) throw "FileError";
     if (inp == 1){
         probabilities_flag = true;
     }else{
@@ -42,7 +34,7 @@ Mat::Mat(char file_path[]){
     if (probabilities_flag){
         this->probabilities.resize(size_m);
         for (int i = 0; i < size_m; i++){
-            file >> this->probabilities[i];
+            if (!(file >> this->probabilities[i])) throw "FileError";
         }
     }
     if (!(file >> optimism)){
@@ -51,72 +43,85 @@ Mat::Mat(char file_path[]){
     file.close();
 }
 
-Mat::~Mat(){}
-
 template<typename T>
-Maxmin<T> Mat::max(std::vector<T> arr){
-    T max_num = arr[0];
+Maxmin<T> Mat::max(vector<T> arr){
+    if (arr.size() < 1) throw "Array is empty";
+    Maxmin<T> ans;
+    ans.value = arr[0];
+    ans.indexes.push_back(0);
     for (int i = 1; i < arr.size(); i++){
-        if (arr[i] > max_num){
-            max_num = arr[i];
-        }
-    }
-    Maxmin<T> ans(max_num);
-    for (int i = 0; i < arr.size(); i++){
-        if (arr[i] >= max_num){
-            ans.get_vector()->push_back(i);
+        if (arr[i] > ans.value){
+            ans.value = arr[i];
+            ans.indexes.clear();
+            ans.indexes.push_back(i);
+        }else if (arr[i] == ans.value){
+            ans.indexes.push_back(i);
         }
     }
     return ans;
 }
 
 template<typename T>
-Maxmin<T> Mat::min(std::vector<T> arr){
-    T min_num = arr[0];
+Maxmin<T> Mat::min(vector<T> arr){
+    if (arr.size() < 1) throw "Array is empty";
+    Maxmin<T> ans;
+    ans.value = arr[0];
+    ans.indexes.push_back(0);
     for (int i = 1; i < arr.size(); i++){
-        if (arr[i] < min_num){
-            min_num = arr[i];
-        }
-    }
-    Maxmin<T> ans(min_num);
-    for (int i = 0; i < arr.size(); i++){
-        if (arr[i] <= min_num){
-            ans.get_vector()->push_back(i);
+        if (arr[i] < ans.value){
+            ans.value = arr[i];
+            ans.indexes.clear();
+            ans.indexes.push_back(i);
+        }else if (arr[i] == ans.value){
+            ans.indexes.push_back(i);
         }
     }
     return ans;
 }
 
-std::vector<int> Mat::solution(){
-    std::vector<int> strategies(matrix.size());
-    std::vector<std::vector<int>> criterions(4);
-    criterions[0] = bayes_laplace();
-    criterions[1] = wald();
-    criterions[2] = savage();
-    criterions[3] = hurwitz();
+vector<int> Mat::solution(bool print){
+    vector<int> strategies(matrix.size());
+    vector<vector<int>> criterions(4);
+    criterions[0] = bayes_laplace(print);
+    criterions[1] = wald(print);
+    criterions[2] = savage(print);
+    criterions[3] = hurwitz(print);
     for (int i = 0; i < 4; i++){
         for (int j = 0; j < criterions[i].size(); j++){
             strategies[criterions[i][j]]++;
         }
     }
     Maxmin<int> ans = max(strategies);
-    return *ans.get_vector();
+    return ans.indexes;
 }
 
-std::vector<int> Mat::bayes_laplace(){
-    std::vector<double> temp(matrix.size());
+void print_ans(Maxmin<double> ans){
+    cout << "Оптимальные стратегии: ";
+    for (int i = 0; i < ans.indexes.size(); i++){
+        cout << ans.indexes[i] + 1;
+        if (i != ans.indexes.size() - 1) cout << ", ";
+    }
+    cout << endl << endl;
+}
+
+vector<int> Mat::bayes_laplace(bool print){
+    vector<double> temp(matrix.size());
     if (probabilities_flag){
+        if (print) cout << "Критерий Байеса" << endl;
         for (int i = 0; i < matrix.size(); i++){
             for (int j = 0; j < matrix[0].size(); j++){
                 temp[i] += matrix[i][j] * probabilities[j];
             }
+            if (print) cout << "a" << i + 1 << " = " << temp[i] << endl;
         }
     }else{
+        if (print) cout << "Критерий Лапласа" << endl;
         for (int i = 0; i < matrix.size(); i++){
             for (int j = 0; j < matrix[0].size(); j++){
                 temp[i] += matrix[i][j];
             }
             temp[i] /= matrix[0].size();
+            if (print) cout << "a" << i + 1 << " = " << temp[i] << endl;
         }
     }
     Maxmin<double> ans;
@@ -125,82 +130,102 @@ std::vector<int> Mat::bayes_laplace(){
     }else{
         ans = min(temp);
     }
-    return *ans.get_vector();
+    if (print) print_ans(ans);
+    return ans.indexes;
 }
 
-std::vector<int> Mat::wald(){
-    std::vector<double> temp(matrix.size());
+vector<int> Mat::wald(bool print){
+    vector<double> temp(matrix.size());
+    Maxmin<double> ans;
+    if (print) cout << "Критерий Вальда" << endl;
     if (income){
         for (int i = 0; i < matrix.size(); i++){
-            temp[i] = min(matrix[i]).get_value();
+            temp[i] = min(matrix[i]).value;
         }
-        return *max(temp).get_vector();
+        ans = max(temp);
     }else{
         for (int i = 0; i < matrix.size(); i++){
-            temp[i] = max(matrix[i]).get_value();
+            temp[i] = max(matrix[i]).value;
         }
-        return *min(temp).get_vector();
+        ans = min(temp);
     }
+    if (print) print_ans(ans);
+    return ans.indexes;
 }
 
-std::vector<int> Mat::savage(){
-    std::vector<std::vector<double>> risks(matrix.size());
+vector<int> Mat::savage(bool print){
+    vector<vector<double>> risks(matrix.size());
+    if (print) cout << "Критерий Сэвиджа" << endl << "Матрица рисков:" << endl;
     if (income){
-        std::vector<double> temp1(matrix[0].size());
+        vector<double> temp1(matrix[0].size());
         for (int i = 0; i < matrix[0].size(); i++){
-            std::vector<double> temp2(matrix.size());
+            vector<double> temp2(matrix.size());
             for (int j = 0; j < matrix.size(); j++){
                 temp2[j] = matrix[j][i];
             }
-            temp1[i] = max(temp2).get_value();
+            temp1[i] = max(temp2).value;
         }
         for (int i = 0; i < matrix.size(); i++){
             risks[i].resize(matrix[i].size());
             for (int j = 0; j < matrix[i].size(); j++){
-                risks[i][j] = temp1[j] - matrix[i][j];
+                double risk = temp1[j] - matrix[i][j];
+                risks[i][j] = risk;
+                if (print) cout << risk << " ";
             }
+            if (print) cout << endl;
         }
     }else{
-        std::vector<double> temp1(matrix[0].size());
+        vector<double> temp1(matrix[0].size());
         for (int i = 0; i < matrix[0].size(); i++){
-            std::vector<double> temp2(matrix.size());
+            vector<double> temp2(matrix.size());
             for (int j = 0; j < matrix.size(); j++){
                 temp2[j] = matrix[j][i];
             }
-            temp1[i] = min(temp2).get_value();
+            temp1[i] = min(temp2).value;
         }
         for (int i = 0; i < matrix.size(); i++){
             risks[i].resize(matrix[i].size());
             for (int j = 0; j < matrix[i].size(); j++){
-                risks[i][j] = matrix[i][j] - temp1[j];
+                double risk = matrix[i][j] - temp1[j];
+                risks[i][j] = risk;
+                if (print) cout << risk << " ";
             }
+            if (print) cout << endl;
         }
     }
-    std::vector<double> temp(risks.size());
+    vector<double> temp(risks.size());
     for (int i = 0; i < risks.size(); i++){
-        temp[i] = max(risks[i]).get_value();
+        temp[i] = max(risks[i]).value;
     }
-    return *min(temp).get_vector();
+    Maxmin<double> ans = min(temp);
+    if (print) print_ans(ans);
+    return ans.indexes;
 }
 
-std::vector<int> Mat::hurwitz(){
-    std::vector<double> temp_max(matrix.size());
-    std::vector<double> temp_min(matrix.size());
+vector<int> Mat::hurwitz(bool print){
+    vector<double> temp_max(matrix.size());
+    vector<double> temp_min(matrix.size());
+    Maxmin<double> ans;
+    if (print) cout << "Критерий Гурвица" << endl;
     for (int i = 0; i < matrix.size(); i++){
-        temp_max[i] = max(matrix[i]).get_value();
-        temp_min[i] = min(matrix[i]).get_value();
+        temp_max[i] = max(matrix[i]).value;
+        temp_min[i] = min(matrix[i]).value;
     }
     if (income){
-        std::vector<double> temp(matrix.size());
+        vector<double> temp(matrix.size());
         for (int i = 0; i < matrix.size(); i++){
             temp[i] = optimism * temp_min[i] + (1 - optimism) * temp_max[i];
+            if (print) cout << "a" << i + 1 << " = " << temp[i] << endl;
         }
-        return *max(temp).get_vector();
+        ans = max(temp);
     }else{
-        std::vector<double> temp(matrix.size());
+        vector<double> temp(matrix.size());
         for (int i = 0; i < matrix.size(); i++){
             temp[i] = optimism * temp_max[i] + (1 - optimism) * temp_min[i];
+            if (print) cout << "a" << i + 1 << " = " << temp[i] << endl;
         }
-        return *min(temp).get_vector();
+        ans = min(temp);
     }
+    if (print) print_ans(ans);
+    return ans.indexes;
 }

@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Game_theory_and_operations_research-Course_work-8_semester main.cpp
     mat.h mat.cpp
-    maxmin.h
+
     tests/test1
     tests/test2
     tests/test3 )
